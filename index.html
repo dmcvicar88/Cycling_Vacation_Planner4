@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WanderBlocks - Collaborative Vacation Planner</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ocean: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0284c7', 600: '#0369a1', 800: '#075985', 900: '#0c4a6e' },
+                        teal: { 500: '#14b8a6', 600: '#0d9488' },
+                        coral: { 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48' },
+                        gold: { 400: '#facc15', 500: '#eab308', 600: '#ca8a04' },
+                        sand: { 50: '#fdfbf7', 100: '#f7f3e9', 200: '#eae2d0' }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #fdfbf7; }
+        .glass-panel { background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .overlap-glow { box-shadow: 0 0 12px rgba(234, 179, 8, 0.4); border-color: #eab308 !important; }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Navigation Header -->
+    <header class="sticky top-0 z-30 glass-panel border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('destinations')">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-ocean-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-ocean-500/20">
+                        <i data-lucide="compass" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xl font-extrabold bg-gradient-to-r from-ocean-800 via-ocean-600 to-teal-600 bg-clip-text text-transparent">WanderBlocks</span>
+                            <span class="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 rounded-full border border-amber-200">Group Sync</span>
+                        </div>
+                        <span class="text-xs block text-slate-500 font-medium -mt-1">Collaborative Vacation & Availability Planner</span>
+                    </div>
+                </div>
+
+                <!-- Tabs (Desktop) -->
+                <nav class="hidden md:flex space-x-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200">
+                    <button id="tab-btn-destinations" onclick="switchTab('destinations')" class="flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all text-ocean-800 bg-white shadow-sm">
+                        <i data-lucide="map-pin" class="w-4 h-4"></i>
+                        <span>Destinations & Voting</span>
+                        <span id="badge-dest-count" class="ml-1 px-2 py-0.5 text-xs bg-ocean-100 text-ocean-800 rounded-full">0</span>
+                    </button>
+                    <button id="tab-btn-calendar" onclick="switchTab('calendar')" class="flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                        <span>Group Calendar</span>
+                        <span id="badge-overlap-count" class="ml-1 px-2 py-0.5 text-xs bg-amber-100 text-amber-800 font-bold rounded-full">0 Overlaps</span>
+                    </button>
+                    <button id="tab-btn-matcher" onclick="switchTab('matcher')" class="flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+                        <span>Overlap Trip Matcher</span>
+                    </button>
+                </nav>
+
+                <!-- Profile Switcher & Actions -->
+                <div class="flex items-center space-x-3">
+                    <!-- Current Active User Dropdown -->
+                    <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <div id="current-user-avatar" class="w-7 h-7 rounded-lg bg-ocean-600 text-white font-bold text-xs flex items-center justify-center">
+                            A
+                        </div>
+                        <select id="user-profile-selector" onchange="handleUserChange(this.value)" class="bg-transparent text-xs font-bold text-slate-700 pr-2 focus:outline-none cursor-pointer">
+                            <!-- JS Populated Users -->
+                        </select>
+                        <button onclick="promptCreateUser()" title="Quick Add Collaborator" class="p-1 hover:bg-slate-200 rounded-md text-slate-600 transition">
+                            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Admin Management Panel Button -->
+                    <button onclick="openAdminModal()" title="Admin Management Panel" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl transition flex items-center space-x-1.5 text-xs font-semibold">
+                        <i data-lucide="settings" class="w-4 h-4 text-slate-600"></i>
+                        <span class="hidden sm:inline">Admin</span>
+                    </button>
+
+                    <button onclick="openAddDestinationModal()" class="flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-ocean-600 to-teal-600 text-white font-medium text-sm rounded-xl hover:opacity-95 transition-all shadow-md shadow-ocean-600/20 active:scale-95">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span class="hidden lg:inline">Add Destination</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Nav Bar -->
+        <div class="md:hidden flex border-t border-slate-200 bg-white">
+            <button onclick="switchTab('destinations')" id="mobile-tab-destinations" class="flex-1 py-2 text-xs font-semibold text-center text-ocean-600 border-b-2 border-ocean-600 flex flex-col items-center">
+                <i data-lucide="map-pin" class="w-4 h-4 mb-0.5"></i>
+                Destinations
+            </button>
+            <button onclick="switchTab('calendar')" id="mobile-tab-calendar" class="flex-1 py-2 text-xs font-semibold text-center text-slate-500 flex flex-col items-center">
+                <i data-lucide="calendar" class="w-4 h-4 mb-0.5"></i>
+                Group Calendar
+            </button>
+            <button onclick="switchTab('matcher')" id="mobile-tab-matcher" class="flex-1 py-2 text-xs font-semibold text-center text-slate-500 flex flex-col items-center">
+                <i data-lucide="sparkles" class="w-4 h-4 mb-0.5 text-amber-500"></i>
+                Matcher
+            </button>
+        </div>
+    </header>
+
+    <!-- Active Group Collaborator Bar -->
+    <div class="bg-slate-900 text-white py-2 px-4 shadow-inner">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between text-xs gap-2">
+            <div class="flex items-center space-x-2">
+                <span class="flex h-2 w-2 relative">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span class="font-semibold text-slate-300">Live Group Collaborators:</span>
+                <div id="collaborators-pill-list" class="flex items-center space-x-1.5 overflow-x-auto">
+                    <!-- Dynamic user pills -->
+                </div>
+            </div>
+
+            <div id="sync-status-indicator" class="text-slate-400 text-[11px] flex items-center space-x-1">
+                <i data-lucide="refresh-cw" class="w-3 h-3 animate-spin"></i>
+                <span>Connecting to group database...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: DESTINATIONS & GROUP VOTING -->
+        <section id="section-destinations" class="space-y-6">
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-extrabold text-slate-900">Group Destination List</h1>
+                    <p class="text-slate-500 text-sm">Submit trip ideas, place your individual 5-star ratings, and see group consensus rankings.</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <div class="relative flex-1 sm:w-48">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="dest-search" oninput="renderDestinations()" placeholder="Search places..." class="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-ocean-500">
+                    </div>
+
+                    <select id="dest-filter-category" onchange="renderDestinations()" class="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none bg-white">
+                        <option value="ALL">All Categories</option>
+                        <option value="Beach">🏖️ Beach</option>
+                        <option value="Adventure">🏔️ Adventure</option>
+                        <option value="Culture">🏛️ Culture</option>
+                        <option value="Relaxing">🧘 Relaxing</option>
+                        <option value="City">🏙️ City</option>
+                        <option value="Nature">🌲 Nature</option>
+                    </select>
+
+                    <select id="dest-sort-by" onchange="renderDestinations()" class="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none bg-white">
+                        <option value="group-rating">Sort: Top Group Consensus ⭐</option>
+                        <option value="budget-asc">Budget: Low to High</option>
+                        <option value="duration">Duration Required</option>
+                        <option value="title">Alphabetical</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="destinations-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Rendered JS -->
+            </div>
+        </section>
+
+        <!-- TAB 2: GROUP CALENDAR & OVERLAPS -->
+        <section id="section-calendar" class="hidden space-y-6">
+            <!-- Group Summary Bar -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-amber-50 to-gold-50 p-4 rounded-2xl border border-amber-200/80 flex items-center space-x-4 shadow-sm">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md shadow-amber-500/20">
+                        <i data-lucide="users-round" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs uppercase tracking-wider font-extrabold text-amber-800">Shared Overlap Days</span>
+                        <div id="stat-group-overlap-days" class="text-2xl font-black text-amber-950">0 Days</div>
+                        <span class="text-xs text-amber-700">Multiple people free</span>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-2xl border border-emerald-200/80 flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+                        <i data-lucide="user-check" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs uppercase tracking-wider font-semibold text-emerald-800">Your Open Days</span>
+                        <div id="stat-my-open-days" class="text-2xl font-bold text-emerald-950">0 Days</div>
+                        <span class="text-xs text-emerald-700" id="stat-my-name-label">My availability</span>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-ocean-50 to-blue-50 p-4 rounded-2xl border border-ocean-200/80 flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-ocean-600 text-white flex items-center justify-center shadow-md">
+                        <i data-lucide="plane-takeoff" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs uppercase tracking-wider font-semibold text-ocean-800">Booked Group Trips</span>
+                        <div id="stat-booked-trips-count" class="text-2xl font-bold text-ocean-950">0 Trips</div>
+                        <span class="text-xs text-ocean-700">Locked on group schedule</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+                        <i data-lucide="layers" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs uppercase tracking-wider font-semibold text-slate-600">Active Schedules</span>
+                        <div id="stat-active-members-count" class="text-2xl font-bold text-slate-900">0 People</div>
+                        <span class="text-xs text-slate-500">Merged on calendar</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar & Entry Form Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Main Multi-User Calendar Grid (2 Cols) -->
+                <div class="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div class="flex items-center space-x-3">
+                            <h2 id="calendar-month-year" class="text-xl font-bold text-slate-900">Month Year</h2>
+                            <button onclick="calendarToday()" class="px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition">Today</button>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <button onclick="changeMonth(-1)" class="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg border border-slate-200 hover:bg-slate-50 transition">
+                                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            </button>
+                            <button onclick="changeMonth(1)" class="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg border border-slate-200 hover:bg-slate-50 transition">
+                                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-3.5 h-3.5 rounded bg-amber-400 border border-amber-600 inline-block shadow-sm"></span>
+                            <span class="font-bold text-amber-900">⭐ Group Overlap (Multiple Free)</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-3 h-3 rounded bg-emerald-500 border border-emerald-600 inline-block"></span>
+                            <span>Single Open Block</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-3 h-3 rounded bg-ocean-500 border border-ocean-600 inline-block"></span>
+                            <span>Booked Trip</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-3 h-3 rounded bg-slate-300 border border-slate-400 inline-block"></span>
+                            <span>Busy / Work</span>
+                        </div>
+                    </div>
+
+                    <!-- Calendar Day Cells Grid -->
+                    <div class="select-none">
+                        <div class="grid grid-cols-7 gap-1 text-center font-bold text-xs text-slate-400 py-2">
+                            <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+                        </div>
+                        <div id="calendar-days-grid" class="grid grid-cols-7 gap-1.5 pt-1">
+                            <!-- JS Populated Calendar Days -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Availability Entry Form (1 Col) -->
+                <div class="space-y-6">
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 class="font-bold text-slate-900 flex items-center space-x-2 text-sm">
+                                <i data-lucide="calendar-plus" class="w-4 h-4 text-ocean-600"></i>
+                                <span>Add Your Free/Busy Block</span>
+                            </h3>
+                            <span id="active-user-form-pill" class="text-[10px] font-bold px-2 py-0.5 rounded bg-ocean-100 text-ocean-800">
+                                Logged in as User
+                            </span>
+                        </div>
+
+                        <form id="form-mark-block" onsubmit="handleMarkBlockSubmit(event)" class="space-y-3">
+                            <div>
+                                <label class="text-xs font-semibold text-slate-600 block mb-1">Block Type</label>
+                                <select id="block-type-select" onchange="toggleBlockTripSelect()" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                                    <option value="OPEN">🟢 My Open / Free Time</option>
+                                    <option value="BUSY">⚪ My Busy / Work Block</option>
+                                    <option value="TRIP">🔵 Group Scheduled Trip</option>
+                                </select>
+                            </div>
+
+                            <div id="block-dest-select-container" class="hidden">
+                                <label class="text-xs font-semibold text-slate-600 block mb-1">Destination</label>
+                                <select id="block-dest-id" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                                    <!-- Populated JS -->
+                                </select>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600 block mb-1">Start Date</label>
+                                    <input type="date" id="block-start-date" required class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600 block mb-1">End Date</label>
+                                    <input type="date" id="block-end-date" required class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-semibold text-slate-600 block mb-1">Label / Notes</label>
+                                <input type="text" id="block-label" placeholder="e.g. PTO Days / Summer Vacation" class="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                            </div>
+
+                            <button type="submit" class="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition flex items-center justify-center space-x-2 shadow-sm">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                <span>Save Availability Block</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Group Blocks Stream -->
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Group Availability Stream</h3>
+                            <span id="saved-blocks-count-badge" class="text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">0</span>
+                        </div>
+
+                        <div id="saved-blocks-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                            <!-- JS Populated list -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: OVERLAP TRIP MATCHER -->
+        <section id="section-matcher" class="hidden space-y-6">
+            <div class="bg-gradient-to-r from-ocean-900 via-ocean-800 to-teal-900 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                <div class="max-w-2xl relative z-10 space-y-2">
+                    <span class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                        <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                        <span>Automatic Group Optimizer</span>
+                    </span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Overlap Trip Matcher</h2>
+                    <p class="text-ocean-100 text-sm leading-relaxed">
+                        Below are all identified date blocks where multiple group members have overlapping free time, paired with your top voted destinations!
+                    </p>
+                </div>
+            </div>
+
+            <div id="matcher-results-container" class="space-y-6">
+                <!-- Dynamic Overlap Matches -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL: ADD / EDIT DESTINATION -->
+    <div id="modal-destination" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 relative my-8">
+            <button onclick="closeDestinationModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <h2 id="modal-dest-title" class="text-xl font-bold text-slate-900 mb-4">Add Group Destination</h2>
+
+            <form id="form-destination" onsubmit="handleDestinationSubmit(event)" class="space-y-4">
+                <input type="hidden" id="edit-dest-id" value="">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Destination Name *</label>
+                    <input type="text" id="dest-input-title" required placeholder="e.g., Maui, Hawaii" class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Category *</label>
+                        <select id="dest-input-category" required class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                            <option value="Beach">🏖️ Beach</option>
+                            <option value="Adventure">🏔️ Adventure</option>
+                            <option value="Culture">🏛️ Culture</option>
+                            <option value="Relaxing">🧘 Relaxing</option>
+                            <option value="City">🏙️ City</option>
+                            <option value="Nature">🌲 Nature</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Ideal Duration (Days) *</label>
+                        <input type="number" id="dest-input-duration" min="1" max="90" required placeholder="7" class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Est. Budget per Person ($ USD)</label>
+                    <input type="number" id="dest-input-budget" min="0" placeholder="2000" class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Image URL (Optional)</label>
+                    <input type="url" id="dest-input-image" placeholder="https://images.unsplash.com/..." class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Description / Notes</label>
+                    <textarea id="dest-input-desc" rows="3" placeholder="Key attractions, flight notes, travel goals..." class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-ocean-500"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeDestinationModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-bold bg-ocean-600 hover:bg-ocean-700 text-white rounded-xl shadow-md transition">Save Destination</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN MANAGEMENT PANEL -->
+    <div id="modal-admin" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 relative my-8">
+            <button onclick="closeAdminModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="flex items-center space-x-2.5 mb-5 pb-4 border-b border-slate-100">
+                <div class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md">
+                    <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Admin Management Panel</h2>
+                    <p class="text-xs text-slate-500">Add, edit, or delete participants and group destinations.</p>
+                </div>
+            </div>
+
+            <!-- Admin Tabs -->
+            <div class="flex space-x-2 border-b border-slate-200 mb-5">
+                <button id="admin-tab-btn-users" onclick="switchAdminTab('users')" class="py-2 px-4 text-xs font-bold border-b-2 border-ocean-600 text-ocean-600 flex items-center space-x-1.5">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                    <span>Manage Participants (<span id="admin-user-count-badge">0</span>)</span>
+                </button>
+                <button id="admin-tab-btn-dests" onclick="switchAdminTab('dests')" class="py-2 px-4 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-1.5">
+                    <i data-lucide="map-pin" class="w-4 h-4"></i>
+                    <span>Manage Destinations (<span id="admin-dest-count-badge">0</span>)</span>
+                </button>
+            </div>
+
+            <!-- TAB 1: MANAGE PARTICIPANTS -->
+            <div id="admin-tab-users" class="space-y-6">
+                <!-- Add User Form -->
+                <form onsubmit="handleAdminAddUser(event)" class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <h3 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                        <i data-lucide="user-plus" class="w-3.5 h-3.5 text-ocean-600"></i>
+                        <span>Add New Participant</span>
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="sm:col-span-2">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Participant Name *</label>
+                            <input type="text" id="admin-new-user-name" required placeholder="e.g. David, Mom, Sarah" class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:ring-2 focus:ring-ocean-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Avatar Color</label>
+                            <select id="admin-new-user-color" class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:ring-2 focus:ring-ocean-500 bg-white">
+                                <option value="bg-ocean-600">🔵 Ocean Blue</option>
+                                <option value="bg-emerald-600">🟢 Emerald Green</option>
+                                <option value="bg-purple-600">🟣 Purple</option>
+                                <option value="bg-coral-500">🔴 Coral Pink</option>
+                                <option value="bg-amber-600">🟠 Amber Gold</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-2 bg-slate-900 text-white font-bold text-xs rounded-lg hover:bg-slate-800 transition flex items-center justify-center space-x-1.5">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span>Add Participant to Group</span>
+                    </button>
+                </form>
+
+                <!-- Users Table List -->
+                <div class="space-y-2">
+                    <h3 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Active Group Members</h3>
+                    <div id="admin-users-list" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                        <!-- JS Rendered Users -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: MANAGE DESTINATIONS -->
+            <div id="admin-tab-dests" class="hidden space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Group Destination List</h3>
+                    <button onclick="closeAdminModal(); openAddDestinationModal();" class="px-3 py-1.5 bg-ocean-600 text-white rounded-lg text-xs font-bold hover:bg-ocean-700 transition flex items-center space-x-1">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span>Add New Destination</span>
+                    </button>
+                </div>
+
+                <div id="admin-dests-list" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    <!-- JS Rendered Destinations -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Realtime & Application Logic Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration setup
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'wanderblocks-group-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config)
+            : {
+                apiKey: "AIzaSyDemoKeyForWanderBlocksTestingOnly",
+                authDomain: "wanderblocks-demo.firebaseapp.com",
+                projectId: "wanderblocks-demo",
+                storageBucket: "wanderblocks-demo.appspot.com",
+                messagingSenderId: "1234567890",
+                appId: "1:1234567890:web:abcdef123456"
+              };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // CATEGORY STOCK IMAGES
+        const CATEGORY_IMAGES = {
+            Beach: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+            Adventure: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80",
+            Culture: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=800&q=80",
+            Relaxing: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",
+            City: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80",
+            Nature: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
+        };
+
+        // DEFAULT DEMO DATA FOR INITIAL LOAD
+        const DEFAULT_USERS = [
+            { id: "user-1", name: "Alice", avatarColor: "bg-ocean-600" },
+            { id: "user-2", name: "Bob", avatarColor: "bg-emerald-600" },
+            { id: "user-3", name: "Charlie", avatarColor: "bg-purple-600" }
+        ];
+
+        const DEFAULT_DESTINATIONS = [
+            {
+                id: "dest-1",
+                title: "Kyoto & Arashiyama",
+                category: "Culture",
+                budget: 3200,
+                duration: 7,
+                image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=800&q=80",
+                description: "Explore historic temples, bamboo groves, tea ceremonies, and authentic kaiseki dining.",
+                votes: { "user-1": 5, "user-2": 4, "user-3": 5 }
+            },
+            {
+                id: "dest-2",
+                title: "Amalfi Coast & Amalfi Coast",
+                category: "Beach",
+                budget: 4200,
+                duration: 5,
+                image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=800&q=80",
+                description: "Dramatic cliffside village views, boat tours around Capri, and fresh coastal seafood.",
+                votes: { "user-1": 4, "user-2": 5, "user-3": 3 }
+            },
+            {
+                id: "dest-3",
+                title: "Banff National Park",
+                category: "Nature",
+                budget: 2100,
+                duration: 4,
+                image: "https://images.unsplash.com/photo-1517411032315-54ef2cb783bb?auto=format&fit=crop&w=800&q=80",
+                description: "Turquoise glacier lakes (Lake Louise & Moraine), hiking trails, and mountain hot springs.",
+                votes: { "user-1": 3, "user-2": 4, "user-3": 5 }
+            }
+        ];
+
+        function getDefaultBlocks() {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = today.getMonth();
+            const fmt = (year, month, day) => new Date(year, month, day).toISOString().split('T')[0];
+
+            return [
+                {
+                    id: "block-1",
+                    userId: "user-1",
+                    userName: "Alice",
+                    type: "OPEN",
+                    startDate: fmt(y, m, 10),
+                    endDate: fmt(y, m, 18),
+                    label: "Alice PTO Week"
+                },
+                {
+                    id: "block-2",
+                    userId: "user-2",
+                    userName: "Bob",
+                    type: "OPEN",
+                    startDate: fmt(y, m, 12),
+                    endDate: fmt(y, m, 20),
+                    label: "Bob Free Days"
+                },
+                {
+                    id: "block-3",
+                    userId: "user-3",
+                    userName: "Charlie",
+                    type: "OPEN",
+                    startDate: fmt(y, m, 11),
+                    endDate: fmt(y, m, 17),
+                    label: "Charlie Open Block"
+                }
+            ];
+        }
+
+        // GLOBAL STATE
+        window.AppState = {
+            users: DEFAULT_USERS,
+            currentUserId: "user-1",
+            destinations: [],
+            blocks: [],
+            currentCalendarDate: new Date(),
+            activeTab: 'destinations'
+        };
+
+        // INITIALIZE AUTH & FIRESTORE LISTENERS
+        async function initFirebaseSync() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                updateSyncStatus(true, "Connected to Firestore");
+
+                // Listen to Destinations
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'destinations'), (snapshot) => {
+                    const docs = snapshot.docs.map(doc => doc.data());
+                    if (docs.length === 0) {
+                        seedInitialData();
+                    } else {
+                        window.AppState.destinations = docs;
+                        window.renderAll();
+                    }
+                }, (error) => {
+                    console.warn("Firestore error, falling back to local memory mode:", error);
+                    updateSyncStatus(false, "Offline / Local Mode");
+                    if (window.AppState.destinations.length === 0) window.AppState.destinations = DEFAULT_DESTINATIONS;
+                    window.renderAll();
+                });
+
+                // Listen to Blocks
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'availability_blocks'), (snapshot) => {
+                    const docs = snapshot.docs.map(doc => doc.data());
+                    window.AppState.blocks = docs.length > 0 ? docs : getDefaultBlocks();
+                    window.renderAll();
+                }, (err) => console.warn(err));
+
+                // Listen to Users
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'group_users'), (snapshot) => {
+                    const docs = snapshot.docs.map(doc => doc.data());
+                    if (docs.length > 0) window.AppState.users = docs;
+                    window.renderCollaboratorsBar();
+                    window.renderAdminModalContent();
+                }, (err) => console.warn(err));
+
+            } catch (err) {
+                console.warn("Firebase Auth / Init Error:", err);
+                updateSyncStatus(false, "Local Standalone Mode");
+                window.AppState.destinations = DEFAULT_DESTINATIONS;
+                window.AppState.blocks = getDefaultBlocks();
+                window.renderAll();
+            }
+        }
+
+        async function seedInitialData() {
+            try {
+                for (const d of DEFAULT_DESTINATIONS) {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'destinations', d.id), d);
+                }
+                for (const b of getDefaultBlocks()) {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'availability_blocks', b.id), b);
+                }
+                for (const u of DEFAULT_USERS) {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'group_users', u.id), u);
+                }
+            } catch (e) {
+                console.warn("Seeding error:", e);
+            }
+        }
+
+        function updateSyncStatus(online, text) {
+            const el = document.getElementById('sync-status-indicator');
+            if (!el) return;
+            if (online) {
+                el.innerHTML = `<span class="text-emerald-400 font-semibold">● Realtime Sync Active</span>`;
+            } else {
+                el.innerHTML = `<span class="text-amber-400 font-semibold">● ${text}</span>`;
+            }
+        }
+
+        // GLOBAL DATABASE FIRESTORE WRITE HELPERS
+        window.saveDestinationToDB = async function(dest) {
+            // Update in-memory state immediately
+            const idx = window.AppState.destinations.findIndex(d => d.id === dest.id);
+            if (idx !== -1) {
+                window.AppState.destinations[idx] = dest;
+            } else {
+                window.AppState.destinations.push(dest);
+            }
+            window.renderAll();
+            window.renderAdminModalContent();
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'destinations', dest.id), dest);
+            } catch (e) {
+                console.warn("Firestore save destination error:", e);
+            }
+        };
+
+        window.deleteDestinationFromDB = async function(destId) {
+            // Immediately mutate local state
+            window.AppState.destinations = window.AppState.destinations.filter(d => d.id !== destId);
+
+            // Clean up any calendar blocks associated with this destination
+            const linkedBlocks = window.AppState.blocks.filter(b => b.destId === destId);
+            window.AppState.blocks = window.AppState.blocks.filter(b => b.destId !== destId);
+
+            window.renderAll();
+            window.renderAdminModalContent();
+
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'destinations', destId));
+                for (const b of linkedBlocks) {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'availability_blocks', b.id));
+                }
+            } catch (e) {
+                console.warn("Firestore delete destination error:", e);
+            }
+        };
+
+        window.saveBlockToDB = async function(block) {
+            const idx = window.AppState.blocks.findIndex(b => b.id === block.id);
+            if (idx !== -1) {
+                window.AppState.blocks[idx] = block;
+            } else {
+                window.AppState.blocks.push(block);
+            }
+            window.renderAll();
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'availability_blocks', block.id), block);
+            } catch (e) {
+                console.warn("Firestore save block error:", e);
+            }
+        };
+
+        window.deleteBlockFromDB = async function(blockId) {
+            window.AppState.blocks = window.AppState.blocks.filter(b => b.id !== blockId);
+            window.renderAll();
+
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'availability_blocks', blockId));
+            } catch (e) {
+                console.warn("Firestore delete block error:", e);
+            }
+        };
+
+        window.saveUserToDB = async function(user) {
+            const idx = window.AppState.users.findIndex(u => u.id === user.id);
+            if (idx !== -1) {
+                window.AppState.users[idx] = user;
+            } else {
+                window.AppState.users.push(user);
+            }
+            window.renderCollaboratorsBar();
+            window.renderAll();
+            window.renderAdminModalContent();
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'group_users', user.id), user);
+            } catch (e) {
+                console.warn("Firestore save user error:", e);
+            }
+        };
+
+        window.deleteUserFromDB = async function(userId) {
+            // Remove user from state
+            window.AppState.users = window.AppState.users.filter(u => u.id !== userId);
+
+            // Clean up user's availability blocks
+            const deletedBlocks = window.AppState.blocks.filter(b => b.userId === userId);
+            window.AppState.blocks = window.AppState.blocks.filter(b => b.userId !== userId);
+
+            // Clean up votes across all destinations
+            window.AppState.destinations.forEach(dest => {
+                if (dest.votes && dest.votes[userId]) {
+                    delete dest.votes[userId];
+                }
+            });
+
+            // If deleted active profile, switch to first remaining user
+            if (window.AppState.currentUserId === userId) {
+                if (window.AppState.users.length > 0) {
+                    window.AppState.currentUserId = window.AppState.users[0].id;
+                }
+            }
+
+            // Immediately re-render everything
+            window.renderCollaboratorsBar();
+            window.renderAll();
+            window.renderAdminModalContent();
+
+            // Perform Firestore deletions asynchronously
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'group_users', userId));
+                for (const b of deletedBlocks) {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'availability_blocks', b.id));
+                }
+                for (const dest of window.AppState.destinations) {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'destinations', dest.id), dest);
+                }
+            } catch (e) {
+                console.warn("Firestore delete user error:", e);
+            }
+        };
+
+        /* ADMIN MODAL CONTROLLERS */
+        window.openAdminModal = function() {
+            document.getElementById('modal-admin').classList.remove('hidden');
+            window.renderAdminModalContent();
+        };
+
+        window.closeAdminModal = function() {
+            document.getElementById('modal-admin').classList.add('hidden');
+        };
+
+        window.switchAdminTab = function(tab) {
+            document.getElementById('admin-tab-users').classList.toggle('hidden', tab !== 'users');
+            document.getElementById('admin-tab-dests').classList.toggle('hidden', tab !== 'dests');
+
+            const btnUsers = document.getElementById('admin-tab-btn-users');
+            const btnDests = document.getElementById('admin-tab-btn-dests');
+
+            if (btnUsers) {
+                btnUsers.className = tab === 'users'
+                    ? "py-2 px-4 text-xs font-bold border-b-2 border-ocean-600 text-ocean-600 flex items-center space-x-1.5"
+                    : "py-2 px-4 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-1.5";
+            }
+            if (btnDests) {
+                btnDests.className = tab === 'dests'
+                    ? "py-2 px-4 text-xs font-bold border-b-2 border-ocean-600 text-ocean-600 flex items-center space-x-1.5"
+                    : "py-2 px-4 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-1.5";
+            }
+        };
+
+        window.handleAdminAddUser = async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('admin-new-user-name').value.trim();
+            const color = document.getElementById('admin-new-user-color').value;
+
+            if (!name) return;
+
+            const newUser = {
+                id: `user-${Date.now()}`,
+                name: name,
+                avatarColor: color
+            };
+
+            await window.saveUserToDB(newUser);
+            document.getElementById('admin-new-user-name').value = '';
+            window.renderAdminModalContent();
+        };
+
+        window.renderAdminModalContent = function() {
+            // Badges
+            const userBadge = document.getElementById('admin-user-count-badge');
+            const destBadge = document.getElementById('admin-dest-count-badge');
+            if (userBadge) userBadge.innerText = window.AppState.users.length;
+            if (destBadge) destBadge.innerText = window.AppState.destinations.length;
+
+            // Render Users List
+            const usersList = document.getElementById('admin-users-list');
+            if (usersList) {
+                usersList.innerHTML = window.AppState.users.map(u => {
+                    const blockCount = window.AppState.blocks.filter(b => b.userId === u.id).length;
+                    const isSelf = u.id === window.AppState.currentUserId;
+
+                    return `
+                        <div class="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between shadow-sm">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-lg ${u.avatarColor || 'bg-ocean-600'} text-white font-bold text-xs flex items-center justify-center">
+                                    ${u.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-slate-800 flex items-center space-x-1.5">
+                                        <span>${u.name}</span>
+                                        ${isSelf ? '<span class="px-1.5 py-0.2 text-[9px] bg-ocean-100 text-ocean-800 rounded font-extrabold">Active Profile</span>' : ''}
+                                    </div>
+                                    <span class="text-[10px] text-slate-400">${blockCount} availability entries</span>
+                                </div>
+                            </div>
+
+                            <button onclick="confirmDeleteUser('${u.id}', '${u.name}')" class="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Delete Participant">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Render Destinations List
+            const destsList = document.getElementById('admin-dests-list');
+            if (destsList) {
+                destsList.innerHTML = window.AppState.destinations.map(d => {
+                    const votesCount = Object.keys(d.votes || {}).length;
+                    const imgUrl = d.image || CATEGORY_IMAGES[d.category] || CATEGORY_IMAGES.Beach;
+
+                    return `
+                        <div class="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between shadow-sm">
+                            <div class="flex items-center space-x-3">
+                                <img src="${imgUrl}" alt="${d.title}" class="w-10 h-10 rounded-lg object-cover bg-slate-100" onerror="this.src='${CATEGORY_IMAGES.Beach}'">
+                                <div>
+                                    <h4 class="font-bold text-xs text-slate-800">${d.title}</h4>
+                                    <div class="text-[10px] text-slate-500 space-x-2">
+                                        <span>🏷️ ${d.category}</span>
+                                        <span>⏱️ ${d.duration} Days</span>
+                                        <span>💵 $${d.budget}</span>
+                                        <span>⭐ ${votesCount} Votes</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center space-x-1">
+                                <button onclick="openEditDestinationModal('${d.id}')" class="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-lg transition" title="Edit Destination">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="confirmDeleteDestination('${d.id}', '${d.title}')" class="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Delete Destination">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            window.initLucide();
+        };
+
+        window.confirmDeleteUser = function(userId, userName) {
+            if (window.AppState.users.length <= 1) {
+                alert("Cannot delete the last remaining participant in the group.");
+                return;
+            }
+            if (confirm(`Are you sure you want to delete participant "${userName}"? This will remove all their availability blocks and destination ratings.`)) {
+                window.deleteUserFromDB(userId);
+            }
+        };
+
+        window.confirmDeleteDestination = function(destId, title) {
+            if (confirm(`Are you sure you want to delete destination "${title}"?`)) {
+                window.deleteDestinationFromDB(destId);
+            }
+        };
+
+        window.openEditDestinationModal = function(destId) {
+            const dest = window.AppState.destinations.find(d => d.id === destId);
+            if (!dest) return;
+
+            document.getElementById('edit-dest-id').value = dest.id;
+            document.getElementById('dest-input-title').value = dest.title;
+            document.getElementById('dest-input-category').value = dest.category;
+            document.getElementById('dest-input-duration').value = dest.duration;
+            document.getElementById('dest-input-budget').value = dest.budget;
+            document.getElementById('dest-input-image').value = dest.image || '';
+            document.getElementById('dest-input-desc').value = dest.description || '';
+
+            document.getElementById('modal-dest-title').innerText = "Edit Group Destination";
+            closeAdminModal();
+            document.getElementById('modal-destination').classList.remove('hidden');
+        };
+
+        /* VIEW CONTROLLER & DOM HANDLERS */
+        window.initLucide = function() {
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        window.switchTab = function(tab) {
+            window.AppState.activeTab = tab;
+            document.getElementById('section-destinations').classList.toggle('hidden', tab !== 'destinations');
+            document.getElementById('section-calendar').classList.toggle('hidden', tab !== 'calendar');
+            document.getElementById('section-matcher').classList.toggle('hidden', tab !== 'matcher');
+
+            ['destinations', 'calendar', 'matcher'].forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (btn) {
+                    btn.className = t === tab 
+                        ? "flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all text-ocean-800 bg-white shadow-sm"
+                        : "flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900";
+                }
+            });
+
+            window.renderAll();
+        };
+
+        window.handleUserChange = function(newUserId) {
+            window.AppState.currentUserId = newUserId;
+            window.renderCollaboratorsBar();
+            window.renderAll();
+        };
+
+        window.promptCreateUser = async function() {
+            const name = prompt("Enter new collaborator profile name:");
+            if (!name || !name.trim()) return;
+
+            const colors = ["bg-ocean-600", "bg-emerald-600", "bg-purple-600", "bg-coral-500", "bg-amber-600"];
+            const newUser = {
+                id: `user-${Date.now()}`,
+                name: name.trim(),
+                avatarColor: colors[Math.floor(Math.random() * colors.length)]
+            };
+
+            await window.saveUserToDB(newUser);
+            window.AppState.currentUserId = newUser.id;
+            window.renderCollaboratorsBar();
+            window.renderAll();
+        };
+
+        window.renderCollaboratorsBar = function() {
+            const listEl = document.getElementById('collaborators-pill-list');
+            const selectEl = document.getElementById('user-profile-selector');
+            const avatarEl = document.getElementById('current-user-avatar');
+            if (!listEl || !selectEl) return;
+
+            const currentUser = window.AppState.users.find(u => u.id === window.AppState.currentUserId) || window.AppState.users[0];
+
+            if (avatarEl && currentUser) {
+                avatarEl.className = `w-7 h-7 rounded-lg ${currentUser.avatarColor || 'bg-ocean-600'} text-white font-bold text-xs flex items-center justify-center`;
+                avatarEl.innerText = currentUser.name.charAt(0).toUpperCase();
+            }
+
+            selectEl.innerHTML = window.AppState.users.map(u => `
+                <option value="${u.id}" ${u.id === window.AppState.currentUserId ? 'selected' : ''}>
+                    ${u.name} ${u.id === window.AppState.currentUserId ? '(You)' : ''}
+                </option>
+            `).join('');
+
+            listEl.innerHTML = window.AppState.users.map(u => {
+                const isActive = u.id === window.AppState.currentUserId;
+                return `
+                    <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'bg-slate-800 text-slate-300'}">
+                        <span class="w-2 h-2 rounded-full ${u.avatarColor || 'bg-ocean-500'}"></span>
+                        <span>${u.name}</span>
+                    </span>
+                `;
+            }).join('');
+
+            const myLabel = document.getElementById('stat-my-name-label');
+            if (myLabel && currentUser) myLabel.innerText = `${currentUser.name}'s Availability`;
+
+            const formPill = document.getElementById('active-user-form-pill');
+            if (formPill && currentUser) formPill.innerText = `Adding for ${currentUser.name}`;
+        };
+
+        window.renderAll = function() {
+            window.renderCollaboratorsBar();
+            if (window.AppState.activeTab === 'destinations') window.renderDestinations();
+            if (window.AppState.activeTab === 'calendar') window.renderCalendar();
+            if (window.AppState.activeTab === 'matcher') window.renderMatcher();
+            window.updateBadges();
+            window.initLucide();
+        };
+
+        /* DESTINATIONS & GROUP VOTING RENDERER */
+        window.renderDestinations = function() {
+            const container = document.getElementById('destinations-grid');
+            if (!container) return;
+
+            const search = (document.getElementById('dest-search')?.value || '').toLowerCase();
+            const category = document.getElementById('dest-filter-category')?.value || 'ALL';
+            const sortBy = document.getElementById('dest-sort-by')?.value || 'group-rating';
+
+            let filtered = window.AppState.destinations.filter(d => {
+                const matchSearch = d.title.toLowerCase().includes(search) || d.description.toLowerCase().includes(search);
+                const matchCat = category === 'ALL' || d.category === category;
+                return matchSearch && matchCat;
+            });
+
+            // Calculate Group Ratings
+            filtered.forEach(d => {
+                const votes = Object.values(d.votes || {});
+                d.avgRating = votes.length > 0 ? (votes.reduce((a,b) => a + b, 0) / votes.length) : 0;
+            });
+
+            // Sorting
+            filtered.sort((a,b) => {
+                if (sortBy === 'group-rating') return b.avgRating - a.avgRating;
+                if (sortBy === 'budget-asc') return a.budget - b.budget;
+                if (sortBy === 'duration') return b.duration - a.duration;
+                if (sortBy === 'title') return a.title.localeCompare(b.title);
+                return 0;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-16 text-center bg-white rounded-2xl border border-slate-200">
+                        <i data-lucide="map" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
+                        <h3 class="text-lg font-bold text-slate-700">No destinations found</h3>
+                        <p class="text-xs text-slate-400 mt-1">Add a new destination for your group to vote on!</p>
+                        <button onclick="openAddDestinationModal()" class="mt-4 px-4 py-2 bg-ocean-600 text-white rounded-xl text-xs font-bold shadow-md">
+                            + Add Destination
+                        </button>
+                    </div>
+                `;
+                window.initLucide();
+                return;
+            }
+
+            const currentUserId = window.AppState.currentUserId;
+
+            container.innerHTML = filtered.map((d) => {
+                const myVote = d.votes?.[currentUserId] || 0;
+                const imgUrl = d.image || CATEGORY_IMAGES[d.category] || CATEGORY_IMAGES.Beach;
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden group">
+                        <div class="relative h-48 w-full bg-slate-100 overflow-hidden">
+                            <img src="${imgUrl}" alt="${d.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='${CATEGORY_IMAGES.Beach}'">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-black/20"></div>
+
+                            <!-- Group Score Badge -->
+                            <div class="absolute top-3 left-3 px-2.5 py-1 text-xs font-extrabold rounded-lg shadow-sm bg-amber-400 text-slate-900 flex items-center space-x-1">
+                                <i data-lucide="star" class="w-3.5 h-3.5 fill-slate-900"></i>
+                                <span>${d.avgRating.toFixed(1)} Group Score</span>
+                            </div>
+
+                            <div class="absolute bottom-3 left-3 text-white text-xs font-semibold bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/30">
+                                ${d.category}
+                            </div>
+                        </div>
+
+                        <div class="p-5 flex-1 flex flex-col justify-between space-y-4">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-slate-900 leading-snug">${d.title}</h3>
+                                <p class="text-xs text-slate-500 mt-1 line-clamp-2">${d.description || 'No notes provided.'}</p>
+                            </div>
+
+                            <!-- User Voting Interactive Stars -->
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">Your Rating</span>
+                                    <span class="text-[11px] font-bold text-ocean-600">${myVote > 0 ? `${myVote} Stars` : 'Not Voted'}</span>
+                                </div>
+                                <div class="flex items-center justify-between text-amber-400">
+                                    ${[1,2,3,4,5].map(star => `
+                                        <button onclick="castVote('${d.id}', ${star})" class="p-1 hover:scale-125 transition-transform focus:outline-none">
+                                            <i data-lucide="star" class="w-5 h-5 ${star <= myVote ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}"></i>
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <!-- Details Row -->
+                            <div class="grid grid-cols-2 gap-2 py-2 border-y border-slate-100 text-xs">
+                                <div>
+                                    <span class="block text-[10px] text-slate-400 font-semibold uppercase">Est. Budget</span>
+                                    <span class="font-bold text-slate-800">$${d.budget.toLocaleString()}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] text-slate-400 font-semibold uppercase">Duration</span>
+                                    <span class="font-bold text-slate-800">${d.duration} Days</span>
+                                </div>
+                            </div>
+
+                            <!-- Voters Breakdown Pills -->
+                            <div class="flex flex-wrap items-center gap-1">
+                                <span class="text-[10px] text-slate-400 font-bold mr-1">Votes:</span>
+                                ${Object.entries(d.votes || {}).map(([uid, score]) => {
+                                    const uObj = window.AppState.users.find(u => u.id === uid);
+                                    return `
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 flex items-center space-x-1">
+                                            <span>${uObj ? uObj.name : 'User'}:</span>
+                                            <span class="text-amber-600">★${score}</span>
+                                        </span>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            window.initLucide();
+        };
+
+        window.castVote = async function(destId, rating) {
+            const dest = window.AppState.destinations.find(d => d.id === destId);
+            if (!dest) return;
+
+            const votes = dest.votes || {};
+            votes[window.AppState.currentUserId] = rating;
+            dest.votes = votes;
+
+            await window.saveDestinationToDB(dest);
+        };
+
+        window.openAddDestinationModal = function() {
+            document.getElementById('form-destination').reset();
+            document.getElementById('edit-dest-id').value = '';
+            document.getElementById('modal-dest-title').innerText = "Add Group Destination";
+            document.getElementById('modal-destination').classList.remove('hidden');
+        };
+
+        window.closeDestinationModal = function() {
+            document.getElementById('modal-destination').classList.add('hidden');
+        };
+
+        window.handleDestinationSubmit = async function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-dest-id').value;
+            const existing = editId ? window.AppState.destinations.find(d => d.id === editId) : null;
+
+            const newDest = {
+                id: editId || `dest-${Date.now()}`,
+                title: document.getElementById('dest-input-title').value.trim(),
+                category: document.getElementById('dest-input-category').value,
+                duration: parseInt(document.getElementById('dest-input-duration').value) || 1,
+                budget: parseFloat(document.getElementById('dest-input-budget').value) || 0,
+                image: document.getElementById('dest-input-image').value.trim(),
+                description: document.getElementById('dest-input-desc').value.trim(),
+                votes: existing ? existing.votes : { [window.AppState.currentUserId]: 5 }
+            };
+
+            await window.saveDestinationToDB(newDest);
+            window.closeDestinationModal();
+        };
+
+        /* CALENDAR & GROUP OVERLAP HEATMAP ENGINE */
+        window.changeMonth = function(delta) {
+            window.AppState.currentCalendarDate.setMonth(window.AppState.currentCalendarDate.getMonth() + delta);
+            window.renderCalendar();
+        };
+
+        window.calendarToday = function() {
+            window.AppState.currentCalendarDate = new Date();
+            window.renderCalendar();
+        };
+
+        window.renderCalendar = function() {
+            const monthYearEl = document.getElementById('calendar-month-year');
+            const gridEl = document.getElementById('calendar-days-grid');
+            if (!monthYearEl || !gridEl) return;
+
+            const year = window.AppState.currentCalendarDate.getFullYear();
+            const month = window.AppState.currentCalendarDate.getMonth();
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            monthYearEl.innerText = `${monthNames[month]} ${year}`;
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+
+            gridEl.innerHTML = '';
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const blank = document.createElement('div');
+                blank.className = "h-20 sm:h-24 bg-slate-50/50 rounded-xl border border-dashed border-slate-100";
+                gridEl.appendChild(blank);
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            for (let day = 1; day <= totalDays; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                const dateBlocks = getBlocksForDate(dateStr);
+                const openBlocks = dateBlocks.filter(b => b.type === 'OPEN');
+                const tripBlocks = dateBlocks.filter(b => b.type === 'TRIP');
+
+                const uniqueUsersOpen = new Set(openBlocks.map(b => b.userId));
+                const isOverlap = uniqueUsersOpen.size >= 2;
+
+                const isToday = dateStr === todayStr;
+
+                const cell = document.createElement('div');
+                let cellStyle = "bg-white border-slate-200 hover:border-ocean-300";
+
+                if (isOverlap) {
+                    cellStyle = "bg-gradient-to-br from-amber-50 to-gold-50 border-amber-400 text-amber-950 font-bold overlap-glow";
+                } else if (openBlocks.length > 0) {
+                    cellStyle = "bg-emerald-50/70 border-emerald-300 text-emerald-950";
+                } else if (tripBlocks.length > 0) {
+                    cellStyle = "bg-ocean-50 border-ocean-300 text-ocean-950 font-bold";
+                }
+
+                cell.className = `h-20 sm:h-24 p-1.5 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${cellStyle} ${isToday ? 'ring-2 ring-ocean-500' : ''}`;
+                cell.onclick = () => onCalendarDateClick(dateStr);
+
+                cell.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold ${isToday ? 'bg-ocean-600 text-white w-5 h-5 rounded-full flex items-center justify-center' : ''}">${day}</span>
+                        ${isOverlap ? `<span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-950">★ OVERLAP (${uniqueUsersOpen.size})</span>` : ''}
+                    </div>
+
+                    <div class="space-y-0.5 overflow-hidden">
+                        ${openBlocks.map(b => {
+                            const uObj = window.AppState.users.find(u => u.id === b.userId);
+                            return `<div class="text-[9px] font-bold px-1 rounded bg-emerald-600 text-white truncate">${uObj ? uObj.name : 'Open'} Free</div>`;
+                        }).join('')}
+
+                        ${tripBlocks.map(b => {
+                            const dObj = window.AppState.destinations.find(d => d.id === b.destId);
+                            return `<div class="text-[9px] font-bold px-1 rounded bg-ocean-600 text-white truncate">✈️ ${dObj ? dObj.title : 'Trip'}</div>`;
+                        }).join('')}
+                    </div>
+                `;
+
+                gridEl.appendChild(cell);
+            }
+
+            window.renderCalendarDashboardStats();
+            window.renderSavedBlocksList();
+            window.populateDestDropdownInBlockForm();
+        };
+
+        function getBlocksForDate(dateStr) {
+            const date = new Date(dateStr);
+            return window.AppState.blocks.filter(b => {
+                const start = new Date(b.startDate);
+                const end = new Date(b.endDate);
+                return date >= start && date <= end;
+            });
+        }
+
+        window.onCalendarDateClick = function(dateStr) {
+            document.getElementById('block-start-date').value = dateStr;
+            document.getElementById('block-end-date').value = dateStr;
+        };
+
+        window.toggleBlockTripSelect = function() {
+            const type = document.getElementById('block-type-select').value;
+            document.getElementById('block-dest-select-container').classList.toggle('hidden', type !== 'TRIP');
+        };
+
+        window.populateDestDropdownInBlockForm = function() {
+            const select = document.getElementById('block-dest-id');
+            if (!select) return;
+            select.innerHTML = window.AppState.destinations.map(d => `<option value="${d.id}">${d.title} (${d.duration} days)</option>`).join('');
+        };
+
+        window.handleMarkBlockSubmit = async function(e) {
+            e.preventDefault();
+            const type = document.getElementById('block-type-select').value;
+            const startDate = document.getElementById('block-start-date').value;
+            const endDate = document.getElementById('block-end-date').value;
+            const label = document.getElementById('block-label').value.trim();
+            const destId = type === 'TRIP' ? document.getElementById('block-dest-id').value : null;
+
+            const currentUser = window.AppState.users.find(u => u.id === window.AppState.currentUserId);
+
+            const newBlock = {
+                id: `block-${Date.now()}`,
+                userId: window.AppState.currentUserId,
+                userName: currentUser ? currentUser.name : "Collaborator",
+                type: type,
+                startDate: startDate,
+                endDate: endDate,
+                label: label || (type === 'OPEN' ? 'Free Block' : 'Scheduled Block'),
+                destId: destId
+            };
+
+            await window.saveBlockToDB(newBlock);
+            document.getElementById('form-mark-block').reset();
+            window.toggleBlockTripSelect();
+        };
+
+        window.renderCalendarDashboardStats = function() {
+            let totalOverlapDays = 0;
+            const year = window.AppState.currentCalendarDate.getFullYear();
+            const month = window.AppState.currentCalendarDate.getMonth();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+
+            for (let day = 1; day <= totalDays; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const openUsers = new Set(getBlocksForDate(dateStr).filter(b => b.type === 'OPEN').map(b => b.userId));
+                if (openUsers.size >= 2) totalOverlapDays++;
+            }
+
+            document.getElementById('stat-group-overlap-days').innerText = `${totalOverlapDays} Days`;
+
+            const myOpen = window.AppState.blocks.filter(b => b.userId === window.AppState.currentUserId && b.type === 'OPEN');
+            let myDays = 0;
+            myOpen.forEach(b => {
+                myDays += Math.ceil(Math.abs(new Date(b.endDate) - new Date(b.startDate)) / (1000 * 60 * 60 * 24)) + 1;
+            });
+            document.getElementById('stat-my-open-days').innerText = `${myDays} Days`;
+
+            const tripCount = window.AppState.blocks.filter(b => b.type === 'TRIP').length;
+            document.getElementById('stat-booked-trips-count').innerText = `${tripCount} Trips`;
+
+            const activeUserCount = new Set(window.AppState.blocks.map(b => b.userId)).size;
+            document.getElementById('stat-active-members-count').innerText = `${activeUserCount} Members`;
+        };
+
+        window.renderSavedBlocksList = function() {
+            const listEl = document.getElementById('saved-blocks-list');
+            const badgeEl = document.getElementById('saved-blocks-count-badge');
+            if (!listEl) return;
+
+            badgeEl.innerText = window.AppState.blocks.length;
+
+            if (window.AppState.blocks.length === 0) {
+                listEl.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">No availability submitted yet.</p>`;
+                return;
+            }
+
+            listEl.innerHTML = window.AppState.blocks.map(b => {
+                const isTrip = b.type === 'TRIP';
+                const isOpen = b.type === 'OPEN';
+                const uObj = window.AppState.users.find(u => u.id === b.userId);
+
+                return `
+                    <div class="p-2.5 rounded-xl border ${isOpen ? 'bg-emerald-50 border-emerald-200' : isTrip ? 'bg-ocean-50 border-ocean-200' : 'bg-slate-50 border-slate-200'} flex items-center justify-between text-xs">
+                        <div>
+                            <div class="font-extrabold text-slate-800 flex items-center space-x-1">
+                                <span class="w-2 h-2 rounded-full ${uObj ? uObj.avatarColor : 'bg-slate-400'}"></span>
+                                <span>${uObj ? uObj.name : 'User'}: ${b.label}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500">📅 ${b.startDate} to ${b.endDate}</div>
+                        </div>
+                        <button onclick="deleteBlockFromDB('${b.id}')" class="p-1 text-slate-400 hover:text-rose-600 rounded" title="Delete Block">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            window.initLucide();
+        };
+
+        window.updateBadges = function() {
+            document.getElementById('badge-dest-count').innerText = window.AppState.destinations.length;
+        };
+
+        /* TRIP MATCHER WITH GROUP OVERLAP DETECTION */
+        window.renderMatcher = function() {
+            const container = document.getElementById('matcher-results-container');
+            if (!container) return;
+
+            const openBlocks = window.AppState.blocks.filter(b => b.type === 'OPEN');
+
+            if (openBlocks.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl p-12 text-center border border-slate-200">
+                        <i data-lucide="calendar-x" class="w-12 h-12 text-amber-400 mx-auto mb-3"></i>
+                        <h3 class="text-lg font-bold text-slate-800">No Open Time Blocks Found</h3>
+                        <p class="text-slate-500 text-xs mt-1">Submit your open days on the calendar tab to unlock group matching!</p>
+                    </div>
+                `;
+                window.initLucide();
+                return;
+            }
+
+            container.innerHTML = openBlocks.map(block => {
+                const uObj = window.AppState.users.find(u => u.id === block.userId);
+                const start = new Date(block.startDate);
+                const end = new Date(block.endDate);
+                const durationDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+                const bestDestinations = [...window.AppState.destinations].sort((a,b) => {
+                    const rA = Object.values(a.votes || {}).reduce((x,y) => x+y, 0);
+                    const rB = Object.values(b.votes || {}).reduce((x,y) => x+y, 0);
+                    return rB - rA;
+                });
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div class="bg-slate-50 px-6 py-4 border-b border-slate-200/80 flex items-center justify-between">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2.5 h-2.5 rounded-full ${uObj ? uObj.avatarColor : 'bg-ocean-600'}"></span>
+                                    <h3 class="font-extrabold text-slate-900">${uObj ? uObj.name : 'Collaborator'}'s ${block.label}</h3>
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">${durationDays} Open Days</span>
+                                </div>
+                                <span class="text-xs text-slate-500">📅 ${block.startDate} to ${block.endDate}</span>
+                            </div>
+                        </div>
+
+                        <div class="p-6">
+                            <h4 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">Top Recommended Group Destinations</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                ${bestDestinations.map(d => {
+                                    const votes = Object.values(d.votes || {});
+                                    const avg = votes.length > 0 ? (votes.reduce((a,b) => a+b,0) / votes.length) : 0;
+
+                                    return `
+                                        <div class="border border-slate-200 rounded-xl p-4 flex flex-col justify-between bg-sand-50/40">
+                                            <div>
+                                                <div class="flex items-center justify-between text-xs font-bold text-amber-600 mb-1">
+                                                    <span>★ ${avg.toFixed(1)} Group Score</span>
+                                                    <span class="text-slate-500">${d.duration} Days Required</span>
+                                                </div>
+                                                <h5 class="font-extrabold text-slate-900 text-sm">${d.title}</h5>
+                                                <p class="text-xs text-slate-500 line-clamp-2 mt-1">${d.description}</p>
+                                            </div>
+
+                                            <button onclick="scheduleGroupTrip('${d.id}', '${block.startDate}', '${block.endDate}')" class="mt-4 w-full py-2 bg-slate-900 hover:bg-ocean-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1">
+                                                <i data-lucide="plane" class="w-3.5 h-3.5"></i>
+                                                <span>Schedule Group Trip</span>
+                                            </button>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            window.initLucide();
+        };
+
+        window.scheduleGroupTrip = async function(destId, startDate, endDate) {
+            const dest = window.AppState.destinations.find(d => d.id === destId);
+            const newTrip = {
+                id: `block-${Date.now()}`,
+                userId: window.AppState.currentUserId,
+                type: 'TRIP',
+                startDate: startDate,
+                endDate: endDate,
+                label: dest ? dest.title : 'Group Vacation',
+                destId: destId
+            };
+
+            await window.saveBlockToDB(newTrip);
+            window.switchTab('calendar');
+        };
+
+        // STARTUP
+        window.onload = function() {
+            initFirebaseSync();
+        };
+    </script>
+</body>
+</html>
